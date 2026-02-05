@@ -9,7 +9,10 @@ on:
 jobs:
   call-build:
     uses: ./.github/workflows/_base.yaml
-    permissions: inherit
+    permissions:
+      packages: write
+      attestations: write
+      id-token: write
     with:
       image_name: nginx
       context_path: ./images/nginx
