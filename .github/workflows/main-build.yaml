@@ -25,7 +25,7 @@ jobs:
           dir_names: true # Gib mir Ordnernamen, keine Dateinamen
           dir_names_max_depth: 2 # Nur "images/nginx", nicht tiefer
           json: true # Ausgabe direkt als JSON für die Matrix
-          quotepath: false
+          # quotepath: false
 
       - name: Set matrix
         id: set-matrix
