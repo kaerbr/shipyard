@@ -30,16 +30,12 @@ jobs:
       - name: Set matrix
         id: set-matrix
         run: |
-          # Wir holen uns den Output der vorherigen Action
           CHANGED_DIRS='${{ steps.changed-files.outputs.all_changed_files }}'
 
-          # Sicherheitscheck: Ist die Liste leer?
           if [ "$CHANGED_DIRS" == "[]" ] || [ -z "$CHANGED_DIRS" ]; then
             echo "Keine relevanten Änderungen gefunden."
             echo "has_changes=false" >> $GITHUB_OUTPUT
           else
-            # Wir müssen das "images/" Präfix entfernen, damit nur der Name übrig bleibt (z.B. "nginx")
-            # Wir nutzen jq (JSON processor), um das Array zu bereinigen
             CLEAN_MATRIX=$(echo $CHANGED_DIRS | jq -c 'map(sub("images/"; ""))')
             
             echo "Gefundene Änderungen in: $CLEAN_MATRIX"
