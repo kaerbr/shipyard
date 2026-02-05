@@ -1,0 +1,69 @@
+name: 🚢 Shipyard Main Builder
+
+on:
+  push:
+    branches: [main]
+    paths: ["images/**"]
+
+jobs:
+  # JOB 1: Herausfinden, was sich geändert hat
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      has_changes: ${{ steps.set-matrix.outputs.has_changes }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # Diese Action ist Gold wert: Sie listet geänderte Dateien auf
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v47
+        with:
+          files: images/**
+          dir_names: true # Gib mir Ordnernamen, keine Dateinamen
+          dir_names_max_depth: 2 # Nur "images/nginx", nicht tiefer
+          json: true # Ausgabe direkt als JSON für die Matrix
+          quotepath: false
+
+      - name: Set matrix
+        id: set-matrix
+        run: |
+          # Wir holen uns den Output der vorherigen Action
+          CHANGED_DIRS='${{ steps.changed-files.outputs.all_changed_files }}'
+
+          # Sicherheitscheck: Ist die Liste leer?
+          if [ "$CHANGED_DIRS" == "[]" ] || [ -z "$CHANGED_DIRS" ]; then
+            echo "Keine relevanten Änderungen gefunden."
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            # Wir müssen das "images/" Präfix entfernen, damit nur der Name übrig bleibt (z.B. "nginx")
+            # Wir nutzen jq (JSON processor), um das Array zu bereinigen
+            CLEAN_MATRIX=$(echo $CHANGED_DIRS | jq -c 'map(sub("images/"; ""))')
+            
+            echo "Gefundene Änderungen in: $CLEAN_MATRIX"
+            echo "matrix=$CLEAN_MATRIX" >> $GITHUB_OUTPUT
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+  # JOB 2: Dynamisch bauen (ruft deinen Base-Workflow auf)
+  build-images:
+    needs: detect-changes
+    # Nur laufen lassen, wenn wirklich was gefunden wurde
+    if: needs.detect-changes.outputs.has_changes == 'true'
+    strategy:
+      fail-fast: false # Wenn ein Image fehlschlägt, bauen die anderen trotzdem weiter
+      matrix:
+        # HIER passiert die Magie: Die Liste der Images kommt aus Job 1
+        image: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
+
+    # Ruft deinen bestehenden Base-Workflow auf
+    uses: ./.github/workflows/_base.yaml
+    permissions:
+      packages: write
+      attestations: write
+      id-token: write
+    with:
+      image_name: ${{ matrix.image }}
+      context_path: ./images/${{ matrix.image }}
