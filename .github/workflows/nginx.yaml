@@ -9,6 +9,7 @@ on:
 jobs:
   call-build:
     uses: ./.github/workflows/_base.yaml
+    permissions: inherit
     with:
       image_name: nginx
       context_path: ./images/nginx
