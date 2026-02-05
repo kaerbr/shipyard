@@ -29,15 +29,21 @@ jobs:
 
       - name: Set matrix
         id: set-matrix
+        env:
+          # Wir laden den Output in eine Environment-Variable.
+          # Das verhindert das Escaping-Problem (Backslashes)!
+          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
         run: |
           CHANGED_DIRS='${{ steps.changed-files.outputs.all_changed_files }}'
+          echo "changed dirs: $CHANGED_DIRS"
+          echo "changed dirs: $ALL_CHANGED_FILES"
 
-          if [ "$CHANGED_DIRS" == "[]" ] || [ -z "$CHANGED_DIRS" ]; then
-            echo "Keine relevanten Änderungen gefunden."
+          if [ "$ALL_CHANGED_FILES" == "[]" ] || [ -z "$ALL_CHANGED_FILES" ]; then
+            echo "Keine relevanten Änderungen gefunden."        
             echo "has_changes=false" >> $GITHUB_OUTPUT
           else
-            CLEAN_MATRIX=$(echo $CHANGED_DIRS | jq -c 'map(sub("images/"; ""))')
-            
+            CLEAN_MATRIX=$(echo $ALL_CHANGED_FILES | jq -c 'map(split("/") | select(length == 3) | {name: .[1], variant: .[2], path: ("./" + join("/"))})')
+
             echo "Gefundene Änderungen in: $CLEAN_MATRIX"
             echo "matrix=$CLEAN_MATRIX" >> $GITHUB_OUTPUT
             echo "has_changes=true" >> $GITHUB_OUTPUT
@@ -46,7 +52,6 @@ jobs:
   # JOB 2: Dynamisch bauen (ruft deinen Base-Workflow auf)
   build-images:
     needs: detect-changes
-    # Nur laufen lassen, wenn wirklich was gefunden wurde
     if: needs.detect-changes.outputs.has_changes == 'true'
     strategy:
       fail-fast: false # Wenn ein Image fehlschlägt, bauen die anderen trotzdem weiter
