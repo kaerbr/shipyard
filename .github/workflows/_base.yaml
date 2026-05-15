@@ -1,6 +1,5 @@
 name: Create and publish a Docker image
 
-
 on:
   workflow_call:
     inputs:
@@ -12,11 +11,16 @@ on:
         required: true
         type: string
         description: Direcotry to Dockerfile
-      # platforms:
-      #   required: false
-      #   type: string
-      #   default: linux/amd64,linux/arm64
-      #   description: CPU architecture
+      version:
+        required: false
+        type: string
+        default: latest
+        description: Version of the application
+      extra_labels:
+        required: false
+        type: string
+        default: ""
+        description: Custom labels to apply
 
 env:
   REGISTRY: ghcr.io
@@ -24,46 +28,48 @@ env:
 jobs:
   build-and-push-image:
     runs-on: ubuntu-latest
-    # Sets the permissions granted to the `GITHUB_TOKEN` for the actions in this job.
-    permissions:
-      #contents: read
-      packages: write
-      attestations: write
-      id-token: write
-      #
     steps:
       - name: Checkout repository
+        id: checkout
         uses: actions/checkout@v6
 
-      - name: Log in to the Container registry
-        uses: docker/login-action@v3
+      - name: Login to GitHub Container Registry
+        id: login
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # This step uses [docker/metadata-action](https://github.com/docker/metadata-action#about) to extract tags and labels that will be applied to the specified image. The `id` "meta" allows the output of this step to be referenced in a subsequent step. The `images` value provides the base name for the tags and labels.
+      # This step uses [docker/metadata-action](https://github.com/docker/metadata-action#about) to extract tags and labels that will be applied to the specified image.
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ inputs.image_name }}
+          tags: |
+            type=raw,value=${{ inputs.version }}
+            type=raw,value=latest
+          labels: |
+            org.opencontainers.image.version=${{ inputs.version }}
+            ${{ inputs.extra_labels }}
 
       - name: Build and push Docker image
         id: push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ inputs.context_path }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # platforms: ${{ inputs.platforms }}
-      
+          build-args: |
+            VERSION=${{ inputs.version }}
+
       # This step generates an artifact attestation for the image, which is an unforgeable statement about where and how it was built. It increases supply chain security for people who consume the image. For more information, see [Using artifact attestations to establish provenance for builds](/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds).
-      - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@v3
+      - name: Attest
+        id: attest
+        uses: actions/attest@v4
         with:
           subject-name: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ inputs.image_name}}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
-      

@@ -6,7 +6,6 @@ on:
     paths: ["images/**"]
 
 jobs:
-  # JOB 1: Herausfinden, was sich geändert hat
   detect-changes:
     runs-on: ubuntu-latest
     outputs:
@@ -14,6 +13,7 @@ jobs:
       has_changes: ${{ steps.set-matrix.outputs.has_changes }}
     steps:
       - name: Checkout
+        id: checkout
         uses: actions/checkout@v6
 
       - name: Get changed files
@@ -27,62 +27,45 @@ jobs:
 
       - name: Set matrix
         id: set-matrix
-        # env:
-        #   # Wir laden den Output in eine Environment-Variable.
-        #   # Das verhindert das Escaping-Problem (Backslashes)!
-        #   ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
         run: |
           CHANGED_DIRS='${{ steps.changed-files.outputs.all_changed_files }}'
+          result="[]"
           echo "changed dirs: $CHANGED_DIRS"
 
-          if [ "$CHANGED_DIRS" == "[]" ] || [ -z "$CHANGED_DIRS" ]; then
-            echo "Keine relevanten Änderungen gefunden."
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-          else
-            CLEAN_MATRIX=$(echo "$CHANGED_DIRS" | jq -c 'map(split("/") | {name: .[1], variant: .[2], path: ("./" + join("/"))})')
+          while IFS= read -r dir; do
+            name=$(echo "$dir" | cut -d'/' -f2)
+            path="./$dir"
+            version=$(cat "$dir/VERSION" || exit 1)
+            labels=$(cat "$dir/LABELS" || exit 1)
 
-            echo "Gefundene Änderungen in: $CLEAN_MATRIX"
-            echo "matrix=$CLEAN_MATRIX" >> $GITHUB_OUTPUT
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-          fi
+            result=$(echo "$result" | jq \
+              --arg name "$name" \
+              --arg path "$path" \
+              --arg version "$version" \
+              --arg labels "$labels" \
+              '. += [{"name": $name, "path": $path, "version": $version, "labels": $labels}]')
+          done < <(echo "$CHANGED_DIRS" | jq -r '.[]')
+          echo "matrix<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$result" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          echo "has_changes=true" >> $GITHUB_OUTPUT
 
-  # JOB 2: Dynamisch bauen (ruft deinen Base-Workflow auf)
   build-images:
     needs: detect-changes
     if: needs.detect-changes.outputs.has_changes == 'true'
     strategy:
-      fail-fast: false # Wenn ein Image fehlschlägt, bauen die anderen trotzdem weiter
+      fail-fast: false
       matrix:
-        # HIER passiert die Magie: Die Liste der Images kommt aus Job 1
         image: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
-
-    # Ruft deinen bestehenden Base-Workflow auf
     uses: ./.github/workflows/_base.yaml
     permissions:
-      packages: write
-      attestations: write
+      contents: read
       id-token: write
+      attestations: write
+      artifact-metadata: write
+      packages: write
     with:
-      image_name: ${{ matrix.image }}
-      context_path: ./images/${{ matrix.image }}
-
-  # changed-files:
-  #   name: Get changed files
-  #   runs-on: ubuntu-latest
-  #   outputs:
-  #     matrix: ${{ steps.changed-files.outputs.all_changed_files }}
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v6
-
-  #     - name: Get changed files
-  #       id: changed-files
-  #       uses: ./
-  #       with:
-  #         files: images/**
-  #         dir_names: true
-  #         dir_names_max_depth: 3
-  #         matrix: true
-
-  #     - name: List all changed files
-  #       run: echo '${{ steps.changed-files.outputs.all_changed_files }}'
+      image_name: ${{ matrix.image.name }}
+      context_path: ${{ matrix.image.path }}
+      version: ${{ matrix.image.version }}
+      extra_labels: ${{ matrix.image.labels }}

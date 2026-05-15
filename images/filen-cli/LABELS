@@ -1,0 +1,12 @@
+# Software Info (Original)
+org.opencontainers.image.vendor=FilenCloudDienste
+org.opencontainers.image.url=https://filen.io
+org.opencontainers.image.documentation=https://github.com/FilenCloudDienste/filen-cli
+org.opencontainers.image.licenses=AGPL-3.0-only
+
+# Image Info (Your Build)
+org.opencontainers.image.authors=kaerbr (https://github.com/kaerbr/shipyard)
+org.opencontainers.image.source=https://github.com/kaerbr/shipyard
+org.opencontainers.image.title=Filen CLI (Containerized)
+org.opencontainers.image.description=Unofficial Docker image for Filen CLI - Built by kaerbr
+org.opencontainers.image.base.name=gcr.io/distroless/cc-debian13
