@@ -35,8 +35,9 @@ jobs:
           while IFS= read -r dir; do
             name=$(echo "$dir" | cut -d'/' -f2)
             path="./$dir"
-            version=$(cat "$dir/VERSION" || exit 1)
-            labels=$(cat "$dir/LABELS" || exit 1)
+            # "^\s*#" matches lines where "#" is the first non-whitespace character, so it handles both "#" comment and "  # indented comment".
+            version=$(grep -v '^\s*#' "$dir/VERSION" || exit 1)
+            labels=$(grep -v '^\s*#' "$dir/LABELS" || exit 1)
 
             result=$(echo "$result" | jq \
               --arg name "$name" \
