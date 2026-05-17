@@ -1,5 +1,4 @@
 name: 🚢 Shipyard Main Builder
-
 on:
   push:
     branches: [main]
@@ -10,15 +9,14 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
-      has_changes: ${{ steps.set-matrix.outputs.has_changes }}
     steps:
       - name: Checkout
         id: checkout
         uses: actions/checkout@v6
 
-      - name: Get changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v47
+      - name: Get changed directories
+        id: changed-dirs
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
         with:
           files: images/**
           dir_names: true
@@ -27,8 +25,11 @@ jobs:
 
       - name: Set matrix
         id: set-matrix
+        shell: bash
+        env:
+          CHANGED_DIRS: ${{ steps.changed-dirs.outputs.all_changed_files }}
         run: |
-          CHANGED_DIRS='${{ steps.changed-files.outputs.all_changed_files }}'
+          set -euo pipefail
           result="[]"
           echo "changed dirs: $CHANGED_DIRS"
 
@@ -38,7 +39,6 @@ jobs:
             # "^\s*#" matches lines where "#" is the first non-whitespace character, so it handles both "#" comment and "  # indented comment".
             version=$(grep -v '^\s*#' "$dir/VERSION" || exit 1)
             labels=$(grep -v '^\s*#' "$dir/LABELS" || exit 1)
-
             result=$(echo "$result" | jq \
               --arg name "$name" \
               --arg path "$path" \
@@ -46,14 +46,14 @@ jobs:
               --arg labels "$labels" \
               '. += [{"name": $name, "path": $path, "version": $version, "labels": $labels}]')
           done < <(echo "$CHANGED_DIRS" | jq -r '.[]')
+
           echo "matrix<<EOF" >> "$GITHUB_OUTPUT"
           echo "$result" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
-          echo "has_changes=true" >> $GITHUB_OUTPUT
 
   build-images:
     needs: detect-changes
-    if: needs.detect-changes.outputs.has_changes == 'true'
+    if: needs.detect-changes.outputs.matrix != '[]'
     strategy:
       fail-fast: false
       matrix:
@@ -63,7 +63,6 @@ jobs:
       contents: read
       id-token: write
       attestations: write
-      artifact-metadata: write
       packages: write
     with:
       image_name: ${{ matrix.image.name }}
