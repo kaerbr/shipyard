@@ -1,4 +1,4 @@
-FROM curlimages/curl AS fetcher
+FROM curlimages/curl@sha256:b3f1fb2a51d923260350d21b8654bbc607164a987e2f7c84a0ac199a67df812a AS fetcher
 ARG VERSION
 RUN curl -fL -o /tmp/filen "https://github.com/FilenCloudDienste/filen-cli/releases/download/v${VERSION}/filen-cli-v${VERSION}-linux-x64"
 
