@@ -11,8 +11,8 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": [
-        "(^|/)VERSION$"
+      "managerFilePatterns": [
+        "/(^|/)VERSION$/"
       ],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)(?: versioning=(?<versioning>.*?))?\\s+(?<currentValue>.*)"
@@ -20,8 +20,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "(^|/)LABELS$"
+      "managerFilePatterns": [
+        "/(^|/)LABELS$/"
       ],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)(?: versioning=(?<versioning>.*?))?\\s+org\\.opencontainers\\.image\\.base\\.name=(?<currentValue>.*)"
