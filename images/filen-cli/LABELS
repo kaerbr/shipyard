@@ -9,5 +9,3 @@ org.opencontainers.image.authors=kaerbr (https://github.com/kaerbr/shipyard)
 org.opencontainers.image.source=https://github.com/kaerbr/shipyard
 org.opencontainers.image.title=Filen CLI (Containerized)
 org.opencontainers.image.description=Unofficial Docker image for Filen CLI - Built by kaerbr
-# renovate: datasource=docker depName=gcr.io/distroless/cc-debian13
-org.opencontainers.image.base.name=gcr.io/distroless/cc-debian13:nonroot

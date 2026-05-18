@@ -34,17 +34,38 @@ jobs:
           echo "changed dirs: $CHANGED_DIRS"
 
           while IFS= read -r dir; do
-            name=$(echo "$dir" | cut -d'/' -f2)
+            # App name is the first subdirectory in images/
+            # e.g. images/filen-cli -> filen-cli
+            app_name=$(echo "$dir" | cut -d'/' -f2)
             path="./$dir"
+
             # "^\s*#" matches lines where "#" is the first non-whitespace character, so it handles both "#" comment and "  # indented comment".
             version=$(grep -v '^\s*#' "$dir/VERSION" || exit 1)
             labels=$(grep -v '^\s*#' "$dir/LABELS" || exit 1)
-            result=$(echo "$result" | jq \
-              --arg name "$name" \
-              --arg path "$path" \
-              --arg version "$version" \
-              --arg labels "$labels" \
-              '. += [{"name": $name, "path": $path, "version": $version, "labels": $labels}]')
+
+            # Find all Dockerfiles in this directory
+            # Matches "Dockerfile" or "*.Dockerfile"
+            for df in $(find "$dir" -maxdepth 1 \( -name "Dockerfile" -o -name "*.Dockerfile" \)); do
+              df_filename=$(basename "$df")
+              
+              # Extract flavour name
+              # e.g. "debian.Dockerfile" -> "debian"
+              # e.g. "Dockerfile" -> "" (empty string)
+              if [[ "$df_filename" == "Dockerfile" ]]; then
+                flavour=""
+              else
+                flavour="${df_filename%.Dockerfile}"
+              fi
+
+              result=$(echo "$result" | jq \
+                --arg name "$app_name" \
+                --arg path "$path" \
+                --arg dockerfile "$df_filename" \
+                --arg flavour "$flavour" \
+                --arg version "$version" \
+                --arg labels "$labels" \
+                '. += [{"name": $name, "path": $path, "dockerfile": $dockerfile, "flavour": $flavour, "version": $version, "labels": $labels}]')
+            done
           done < <(echo "$CHANGED_DIRS" | jq -r '.[]')
 
           echo "matrix<<EOF" >> "$GITHUB_OUTPUT"
@@ -63,9 +84,12 @@ jobs:
       contents: read
       id-token: write
       attestations: write
+      artifact-metadata: write
       packages: write
     with:
       image_name: ${{ matrix.image.name }}
       context_path: ${{ matrix.image.path }}
       version: ${{ matrix.image.version }}
+      dockerfile: ${{ matrix.image.dockerfile }}
+      flavour: ${{ matrix.image.flavour }}
       extra_labels: ${{ matrix.image.labels }}
