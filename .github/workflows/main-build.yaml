@@ -3,6 +3,8 @@ on:
   push:
     branches: [main]
     paths: ["images/**"]
+  pull_request:
+    paths: ["images/**"]
 
 jobs:
   detect-changes:
@@ -93,3 +95,5 @@ jobs:
       dockerfile: ${{ matrix.image.dockerfile }}
       flavour: ${{ matrix.image.flavour }}
       extra_labels: ${{ matrix.image.labels }}
+      # PRs only verify the image builds; publishing happens on push to main
+      push: ${{ github.event_name == 'push' }}
