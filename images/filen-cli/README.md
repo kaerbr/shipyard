@@ -2,7 +2,7 @@
 
 Unofficial, minimal, and secure Docker image for the [Filen CLI](https://github.com/FilenCloudDienste/filen-cli).
 
-> [!IMPORTANT]
+> [!NOTE]
 > This image is maintained by **kaerbr** in the [Shipyard](https://github.com/kaerbr/shipyard) repository. The underlying software is developed and owned by **FilenCloudDienste**.
 
 ## Features & Best Practices
@@ -20,7 +20,7 @@ Unofficial, minimal, and secure Docker image for the [Filen CLI](https://github.
 ### Running the Container
 
 ```bash
-docker run --rm ghcr.io/kaerbr/filen-cli:latest help
+docker run --rm ghcr.io/kaerbr/shipyard/filen-cli:latest help
 ```
 
 *Note: Since the CLI handles encryption and cloud storage, you will likely need to mount volumes for local file synchronization and provide credentials via configuration files or environment variables.*
@@ -31,7 +31,9 @@ This image is built automatically via GitHub Actions, but you can build it manua
 
 ```bash
 # From the project root
-docker build -t filen-cli -f images/filen-cli/Dockerfile images/filen-cli
+docker build -t filen-cli \
+  --build-arg VERSION="$(grep -v '^\s*#' images/filen-cli/VERSION)" \
+  -f images/filen-cli/Dockerfile images/filen-cli
 ```
 
 To build a specific version:
