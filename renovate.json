@@ -1,7 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "config:recommended",
+    "docker:pinDigests"
   ],
   "timezone": "Europe/Berlin",
   "assignees": [
@@ -15,15 +16,6 @@
       ],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)(?: versioning=(?<versioning>.*?))?\\s+(?<currentValue>.*)"
-      ]
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/(^|/)LABELS$/"
-      ],
-      "matchStrings": [
-        "# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)(?: versioning=(?<versioning>.*?))?\\s+org\\.opencontainers\\.image\\.base\\.name=(?<currentValue>.*)"
       ]
     }
   ],
